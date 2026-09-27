@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="custom_arm">
+
+  <!-- PLANNING GROUPS -->
+  <group name="arm">
+    <chain base_link="base_link" tip_link="tcp"/>
+  </group>
+
+  <group name="gripper">
+    <link name="palm_base"/>
+    <link name="finger_left"/>
+    <link name="finger_right"/>
+    <joint name="left_finger_joint"/>
+    <joint name="right_finger_joint"/>
+  </group>
+
+  <!-- END EFFECTOR -->
+  <end_effector name="hand" group="gripper" parent_link="tcp" parent_group="arm"/>
+
+  <!-- GROUP STATES (NAMED POSES) -->
+  <!-- Arm Group Poses -->
+  <group_state name="home" group="arm">
+    <joint name="joint_1" value="0.0"/>
+    <joint name="joint_2" value="0.0"/>
+    <joint name="joint_3" value="0.0"/>
+    <joint name="joint_4" value="0.0"/>
+    <joint name="joint_5" value="0.0"/>
+    <joint name="joint_6" value="0.0"/>
+  </group_state>
+
+  <group_state name="ready" group="arm">
+    <joint name="joint_1" value="0.0"/>
+    <joint name="joint_2" value="0.5"/>
+    <joint name="joint_3" value="0.8"/>
+    <joint name="joint_4" value="0.0"/>
+    <joint name="joint_5" value="0.5"/>
+    <joint name="joint_6" value="0.0"/>
+  </group_state>
+
+  <group_state name="vertical" group="arm">
+    <joint name="joint_1" value="0.0"/>
+    <joint name="joint_2" value="0.0"/>
+    <joint name="joint_3" value="0.0"/>
+    <joint name="joint_4" value="0.0"/>
+    <joint name="joint_5" value="0.0"/>
+    <joint name="joint_6" value="0.0"/>
+  </group_state>
+
+  <!-- Gripper Group Poses -->
+  <group_state name="open" group="gripper">
+    <joint name="left_finger_joint" value="0.025"/>
+  </group_state>
+
+  <group_state name="closed" group="gripper">
+    <joint name="left_finger_joint" value="0.0"/>
+  </group_state>
+
+  <!-- DISABLE COLLISIONS: By default, disable collision between adjacent and non-interfering pairs -->
+  <disable_collisions link1="base_link" link2="world" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="link_1" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="link_2" reason="Never"/>
+  <disable_collisions link1="link_1" link2="link_2" reason="Adjacent"/>
+  <disable_collisions link1="link_1" link2="link_3" reason="Never"/>
+  <disable_collisions link1="link_2" link2="link_3" reason="Adjacent"/>
+  <disable_collisions link1="link_2" link2="link_4" reason="Never"/>
+  <disable_collisions link1="link_3" link2="link_4" reason="Adjacent"/>
+  <disable_collisions link1="link_3" link2="link_5" reason="Never"/>
+  <disable_collisions link1="link_4" link2="link_5" reason="Adjacent"/>
+  <disable_collisions link1="link_4" link2="palm_base" reason="Never"/>
+  <disable_collisions link1="link_5" link2="palm_base" reason="Adjacent"/>
+  <disable_collisions link1="link_5" link2="finger_left" reason="Never"/>
+  <disable_collisions link1="link_5" link2="finger_right" reason="Never"/>
+  <disable_collisions link1="palm_base" link2="finger_left" reason="Adjacent"/>
+  <disable_collisions link1="palm_base" link2="finger_right" reason="Adjacent"/>
+  <disable_collisions link1="finger_left" link2="finger_right" reason="Never"/>
+
+</robot>

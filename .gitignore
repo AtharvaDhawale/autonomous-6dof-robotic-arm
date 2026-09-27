@@ -1,0 +1,27 @@
+# ROS 2 Build Artifacts
+build/
+install/
+log/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python Bytecode & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Raw Recording Media
+*.mp4
+*.mkv
+*.avi
+demo_raw.mp4
+
+# Operating System Files
+.DS_Store
+Thumbs.db

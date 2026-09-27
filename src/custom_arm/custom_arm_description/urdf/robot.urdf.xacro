@@ -1,0 +1,440 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="custom_arm">
+
+  <!-- Materials -->
+  <material name="base_dark">
+    <color rgba="0.2 0.2 0.22 1.0"/>
+  </material>
+  <material name="primary_blue">
+    <color rgba="0.12 0.45 0.85 1.0"/>
+  </material>
+  <material name="accent_orange">
+    <color rgba="0.95 0.45 0.1 1.0"/>
+  </material>
+  <material name="link_grey">
+    <color rgba="0.75 0.75 0.78 1.0"/>
+  </material>
+  <material name="gripper_dark">
+    <color rgba="0.15 0.15 0.18 1.0"/>
+  </material>
+  <material name="finger_silver">
+    <color rgba="0.6 0.65 0.7 1.0"/>
+  </material>
+
+  <!-- Inertia Macros -->
+  <xacro:macro name="cylinder_inertial" params="mass radius length *origin">
+    <inertial>
+      <xacro:insert_block name="origin"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${(1.0/12.0) * mass * (3.0*radius*radius + length*length)}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${(1.0/12.0) * mass * (3.0*radius*radius + length*length)}"
+        iyz="0.0"
+        izz="${(1.0/2.0) * mass * radius*radius}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="box_inertial" params="mass x y z *origin">
+    <inertial>
+      <xacro:insert_block name="origin"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${(1.0/12.0) * mass * (y*y + z*z)}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${(1.0/12.0) * mass * (x*x + z*z)}"
+        iyz="0.0"
+        izz="${(1.0/12.0) * mass * (x*x + y*y)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- 1. World link -->
+  <link name="world"/>
+
+  <!-- World -> Base Joint -->
+  <joint name="world_to_base_joint" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 2. Base Link (pedestal cylinder: r=0.08m, l=0.05m, mass=2.0kg) -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.08" length="0.05"/>
+      </geometry>
+      <material name="base_dark"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.08" length="0.05"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertial mass="2.0" radius="0.08" length="0.05">
+      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+    </xacro:cylinder_inertial>
+  </link>
+
+  <!-- 3. Joint 1 (shoulder pan) -->
+  <joint name="joint_1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link_1"/>
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="50.0" velocity="1.5"/>
+    <dynamics damping="0.5" friction="0.1"/>
+  </joint>
+
+  <!-- 4. Link 1 (shoulder bracket: cylinder r=0.05m, l=0.10m, mass=1.2kg) -->
+  <link name="link_1">
+    <visual>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.10"/>
+      </geometry>
+      <material name="accent_orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.10"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertial mass="1.2" radius="0.05" length="0.10">
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    </xacro:cylinder_inertial>
+  </link>
+
+  <!-- 5. Joint 2 (shoulder lift) -->
+  <joint name="joint_2" type="revolute">
+    <parent link="link_1"/>
+    <child link="link_2"/>
+    <origin xyz="0 0 0.10" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50.0" velocity="1.5"/>
+    <dynamics damping="0.5" friction="0.1"/>
+  </joint>
+
+  <!-- 6. Link 2 (upper arm: box 0.05x0.06x0.30m, mass=1.5kg, CoM at z=0.15m) -->
+  <link name="link_2">
+    <visual>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.06 0.30"/>
+      </geometry>
+      <material name="primary_blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.06 0.30"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="1.5" x="0.05" y="0.06" z="0.30">
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+    </xacro:box_inertial>
+  </link>
+
+  <!-- 7. Joint 3 (elbow) -->
+  <joint name="joint_3" type="revolute">
+    <parent link="link_2"/>
+    <child link="link_3"/>
+    <origin xyz="0 0 0.30" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.0" upper="2.0" effort="40.0" velocity="1.5"/>
+    <dynamics damping="0.4" friction="0.1"/>
+  </joint>
+
+  <!-- 8. Link 3 (forearm: box 0.04x0.05x0.25m, mass=1.0kg, CoM at z=0.125m) -->
+  <link name="link_3">
+    <visual>
+      <origin xyz="0 0 0.125" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.05 0.25"/>
+      </geometry>
+      <material name="link_grey"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.125" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.05 0.25"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="1.0" x="0.04" y="0.05" z="0.25">
+      <origin xyz="0 0 0.125" rpy="0 0 0"/>
+    </xacro:box_inertial>
+  </link>
+
+  <!-- 9. Joint 4 (wrist roll) -->
+  <joint name="joint_4" type="revolute">
+    <parent link="link_3"/>
+    <child link="link_4"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="20.0" velocity="2.0"/>
+    <dynamics damping="0.2" friction="0.05"/>
+  </joint>
+
+  <!-- 10. Link 4 (wrist pitch assembly: cylinder r=0.035m, l=0.06m, mass=0.6kg) -->
+  <link name="link_4">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.06"/>
+      </geometry>
+      <material name="accent_orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.06"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertial mass="0.6" radius="0.035" length="0.06">
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+    </xacro:cylinder_inertial>
+  </link>
+
+  <!-- 11. Joint 5 (wrist pitch) -->
+  <joint name="joint_5" type="revolute">
+    <parent link="link_4"/>
+    <child link="link_5"/>
+    <origin xyz="0 0 0.06" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="20.0" velocity="2.0"/>
+    <dynamics damping="0.2" friction="0.05"/>
+  </joint>
+
+  <!-- 12. Link 5 (wrist roll mount: cylinder r=0.03m, l=0.04m, mass=0.4kg) -->
+  <link name="link_5">
+    <visual>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="0.04"/>
+      </geometry>
+      <material name="primary_blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="0.04"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertial mass="0.4" radius="0.03" length="0.04">
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+    </xacro:cylinder_inertial>
+  </link>
+
+  <!-- 13. Joint 6 (wrist yaw / tool rotation) -->
+  <joint name="joint_6" type="revolute">
+    <parent link="link_5"/>
+    <child link="palm_base"/>
+    <origin xyz="0 0 0.04" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="15.0" velocity="2.5"/>
+    <dynamics damping="0.1" friction="0.05"/>
+  </joint>
+
+  <!-- 14. Palm Base (gripper chassis: box 0.08x0.06x0.04m, mass=0.3kg) -->
+  <link name="palm_base">
+    <visual>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.06 0.04"/>
+      </geometry>
+      <material name="gripper_dark"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.06 0.04"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.3" x="0.08" y="0.06" z="0.04">
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+    </xacro:box_inertial>
+  </link>
+
+  <!-- 15. Left Finger Joint -->
+  <joint name="left_finger_joint" type="prismatic">
+    <parent link="palm_base"/>
+    <child link="finger_left"/>
+    <origin xyz="0.02 0 0.04" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="0.0" upper="0.025" effort="20.0" velocity="0.05"/>
+    <dynamics damping="0.1" friction="0.05"/>
+  </joint>
+
+  <!-- 16. Finger Left (box 0.015x0.02x0.06m, mass=0.05kg) -->
+  <link name="finger_left">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.015 0.02 0.06"/>
+      </geometry>
+      <material name="finger_silver"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.015 0.02 0.06"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.05" x="0.015" y="0.02" z="0.06">
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+    </xacro:box_inertial>
+  </link>
+
+  <!-- 17. Right Finger Joint (mimics left_finger_joint) -->
+  <joint name="right_finger_joint" type="prismatic">
+    <parent link="palm_base"/>
+    <child link="finger_right"/>
+    <origin xyz="-0.02 0 0.04" rpy="0 0 0"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="0.0" upper="0.025" effort="20.0" velocity="0.05"/>
+    <dynamics damping="0.1" friction="0.05"/>
+    <mimic joint="left_finger_joint" multiplier="1.0" offset="0.0"/>
+  </joint>
+
+  <!-- 18. Finger Right (box 0.015x0.02x0.06m, mass=0.05kg) -->
+  <link name="finger_right">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.015 0.02 0.06"/>
+      </geometry>
+      <material name="finger_silver"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.015 0.02 0.06"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.05" x="0.015" y="0.02" z="0.06">
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+    </xacro:box_inertial>
+  </link>
+
+  <!-- TCP (Tool Center Point) virtual frame for kinematics / MoveIt -->
+  <joint name="tcp_joint" type="fixed">
+    <parent link="palm_base"/>
+    <child link="tcp"/>
+    <origin xyz="0 0 0.07" rpy="0 0 0"/>
+  </joint>
+
+  <link name="tcp"/>
+
+  <!-- ROS 2 CONTROL HARDWARE INTERFACE -->
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimHardware</plugin>
+    </hardware>
+    <joint name="joint_1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint_2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint_3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint_4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint_5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint_6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_finger_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_finger_joint">
+      <param name="mimic">left_finger_joint</param>
+      <param name="multiplier">1.0</param>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- GAZEBO PLUGINS & SURFACE FRICTION -->
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find custom_arm_control)/config/arm_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="base_link">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="link_1">
+    <material>Gazebo/Orange</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="link_2">
+    <material>Gazebo/Blue</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="link_3">
+    <material>Gazebo/Grey</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="link_4">
+    <material>Gazebo/Orange</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="link_5">
+    <material>Gazebo/Blue</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="palm_base">
+    <material>Gazebo/DarkGrey</material>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+  </gazebo>
+  <gazebo reference="finger_left">
+    <material>Gazebo/Silver</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+    <minDepth>0.001</minDepth>
+  </gazebo>
+  <gazebo reference="finger_right">
+    <material>Gazebo/Silver</material>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+    <minDepth>0.001</minDepth>
+  </gazebo>
+
+</robot>
