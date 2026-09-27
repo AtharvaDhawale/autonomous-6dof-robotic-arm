@@ -1,4 +1,4 @@
-# Autonomous 6-DOF Robotic Arm & Parallel Gripper Pipeline
+# Autonomous 5-DOF Robotic Arm & Parallel Clamshell Gripper Pipeline
 
 [![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy%20Jalisco-3498DB?style=for-the-badge&logo=ros)](https://docs.ros.org/en/jazzy/)
 [![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-FF6F00?style=for-the-badge&logo=gazebo)](https://gazebosim.org/)
@@ -7,7 +7,7 @@
 [![C++](https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=c%2B%2B)](https://isocpp.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=for-the-badge)](LICENSE)
 
-An end-to-end, modular ROS 2 robotic arm manipulation framework featuring closed-form analytical kinematics, MoveIt 2 motion planning, Gazebo Sim physics simulation with `ros2_control`, live TF2 coordinate telemetry, and automated pick-and-place task execution.
+An end-to-end, modular ROS 2 robotic manipulation framework integrating a high-fidelity SolidWorks-exported 5-DOF robotic arm and parallel clamshell gripper. Features closed-form analytical kinematics, MoveIt 2 OMPL motion planning, Gazebo Sim Harmonic physics with `gz_ros2_control`, real-time TF2 coordinate telemetry, and autonomous pick-and-place task execution.
 
 ---
 
@@ -25,12 +25,12 @@ The workspace is organized into five decoupled, production-grade ROS 2 packages 
 robotic_arm_ws/
 ├── src/
 │   └── custom_arm/
-│       ├── custom_arm_description/    # Kinematic chain, Xacro primitives, visual meshes & RViz
-│       ├── custom_arm_moveit_config/  # SRDF, OMPL planners, kinematics solvers, trajectory bindings
-│       ├── custom_arm_gazebo/         # SDF worlds, physics parameters, spawning & Gazebo clock bridge
-│       ├── custom_arm_control/        # ros2_control controller manager & trajectory controller configs
-│       └── custom_arm_kinematics/     # MoveIt IK client, TF2 telemetry listener & pick-and-place state machine
-├── media/                             # Telemetry recordings and demonstration GIFs
+│       ├── custom_arm_description/    # SolidWorks STL visual & collision meshes, URDF/Xacro kinematics, RViz2
+│       ├── custom_arm_moveit_config/  # SRDF planning groups, KDL kinematics, OMPL planners, controller bindings
+│       ├── custom_arm_gazebo/         # SDF 1.8 worlds, ODE physics, table & cube spawning, clock bridge
+│       ├── custom_arm_control/        # ros2_control controller manager & FollowJointTrajectory configs
+│       └── custom_arm_kinematics/     # MoveIt IK client, TF2 telemetry listener & 7-phase state machine
+├── media/                             # High-resolution demonstration GIFs and media assets
 ├── run_demo.sh                        # One-command dual-stage orchestrator
 ├── setup_shortcuts.sh                 # Global bash alias installer
 ├── record_demo.sh                     # Automated X11 recording and 2-pass GIF converter
@@ -41,57 +41,68 @@ robotic_arm_ws/
 
 | Package | Build Type | Core Responsibilities & Interfaces |
 | :--- | :--- | :--- |
-| **`custom_arm_description`** | `ament_cmake` | Parametric URDF/Xacro model, positive-definite inertia tensors, joint dynamics, `gz_ros2_control` hardware interface tags, and RViz inspection pipeline. |
+| **`custom_arm_description`** | `ament_cmake` | High-fidelity SolidWorks STL visual and collision meshes, exact CAD inertia tensors, joint dynamics, `gz_ros2_control` hardware interface tags, and RViz inspection pipeline. |
 | **`custom_arm_moveit_config`**| `ament_cmake` | Semantic description (`robot.srdf`), KDL kinematics plugin, OMPL planners (`RRTConnect`, `RRTstar`, `PRM`), Pilz Cartesian limits, and MoveIt execution controllers. |
-| **`custom_arm_control`**      | `ament_cmake` | `controller_manager` configuration (100 Hz), `JointStateBroadcaster`, and `JointTrajectoryController` for both the 6-DOF arm and parallel gripper. |
-| **`custom_arm_gazebo`**       | `ament_cmake` | SDF 1.8 physics environment (`pick_and_place.world`), ODE solver settings, pedestal table, orange graspable target cube, and `ros_gz_bridge`. |
-| **`custom_arm_kinematics`**   | `ament_python` | Analytical geometric IK solver, `/compute_ik` service client, MoveGroup action client, TF2 coordinate validator, and 7-phase state machine. |
+| **`custom_arm_control`**      | `ament_cmake` | `controller_manager` configuration (100 Hz), `JointStateBroadcaster`, and `JointTrajectoryController` for the 5-DOF arm and parallel gripper. |
+| **`custom_arm_gazebo`**       | `ament_cmake` | SDF 1.8 physics environment (`pick_and_place.world`), ODE solver settings, calibrated work table, target graspable orange cube, destination basket, and `ros_gz_bridge`. |
+| **`custom_arm_kinematics`**   | `ament_python` | Analytical geometric IK solver, `/compute_ik` service client, MoveGroup action client, TF2 coordinate validator, and 7-stage automated pick-and-place state machine. |
 
 ---
 
-## Kinematic Chain & Link Specifications
+## Hardware Specifications & Kinematic Chain
 
-| Link | Type | Dimensions / Geometry | Mass | Parent Joint | Joint Type | Motion Range | Effort / Velocity Limits |
+The robot arm geometry and inertial parameters are derived directly from the custom SolidWorks CAD assembly (`robot_arm_urdf`):
+
+### Link Mass Breakdown
+- **Base Link (`base_link`)**: $17.152\,	ext{kg}$ (Heavy pedestal chassis ensuring dynamic stability)
+- **Shoulder Bracket (`link_1`)**: $3.090\,	ext{kg}$
+- **Upper Arm (`link_2`)**: $5.590\,	ext{kg}$ (Extended link with high torsional stiffness)
+- **Forearm (`link_3`)**: $2.826\,	ext{kg}$
+- **Wrist Pitch Assembly (`link_4`)**: $1.810\,	ext{kg}$
+- **Wrist Mount (`link_5`)**: $0.191\,	ext{kg}$
+- **Gripper Left Finger (`link_6`)**: $0.117\,	ext{kg}$
+- **Gripper Right Finger (`link_7`)**: $0.117\,	ext{kg}$
+
+### Kinematic Joint Specifications
+
+| Joint | Parent $	o$ Child | Type | Axis | Range / Limits | Max Velocity | Effort | Function |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `world` | Ground Frame | Fixed anchor frame | — | — | — | — | — |
-| `base_link` | Cylinder | $r=0.08\,\text{m}, l=0.05\,\text{m}$ | $2.0\,\text{kg}$ | `world_to_base` | Fixed | — | — |
-| `link_1` | Cylinder | $r=0.05\,\text{m}, l=0.10\,\text{m}$ | $1.2\,\text{kg}$ | `joint_1` (Pan) | Revolute ($Z$) | $[-3.14, +3.14]\,\text{rad}$ | $50.0\,\text{Nm} \;\vert\; 1.5\,\text{rad/s}$ |
-| `link_2` | Box | $0.05 \times 0.06 \times 0.30\,\text{m}$ | $1.5\,\text{kg}$ | `joint_2` (Lift) | Revolute ($Y$) | $[-1.57, +1.57]\,\text{rad}$ | $50.0\,\text{Nm} \;\vert\; 1.5\,\text{rad/s}$ |
-| `link_3` | Box | $0.04 \times 0.05 \times 0.25\,\text{m}$ | $1.0\,\text{kg}$ | `joint_3` (Elbow) | Revolute ($Y$) | $[-2.00, +2.00]\,\text{rad}$ | $40.0\,\text{Nm} \;\vert\; 1.5\,\text{rad/s}$ |
-| `link_4` | Cylinder | $r=0.035\,\text{m}, l=0.06\,\text{m}$ | $0.6\,\text{kg}$ | `joint_4` (Roll) | Revolute ($Z$) | $[-3.14, +3.14]\,\text{rad}$ | $20.0\,\text{Nm} \;\vert\; 2.0\,\text{rad/s}$ |
-| `link_5` | Cylinder | $r=0.03\,\text{m}, l=0.04\,\text{m}$ | $0.4\,\text{kg}$ | `joint_5` (Pitch) | Revolute ($Y$) | $[-1.57, +1.57]\,\text{rad}$ | $20.0\,\text{Nm} \;\vert\; 2.0\,\text{rad/s}$ |
-| `palm_base`| Box | $0.08 \times 0.06 \times 0.04\,\text{m}$ | $0.3\,\text{kg}$ | `joint_6` (Yaw) | Revolute ($Z$) | $[-3.14, +3.14]\,\text{rad}$ | $15.0\,\text{Nm} \;\vert\; 2.5\,\text{rad/s}$ |
-| `finger_left` | Box | $0.015 \times 0.02 \times 0.06\,\text{m}$| $0.05\,\text{kg}$| `left_finger_joint` | Prismatic ($X$) | $[0.00, 0.025]\,\text{m}$ | $20.0\,\text{N} \;\vert\; 0.05\,\text{m/s}$ |
-| `finger_right`| Box | $0.015 \times 0.02 \times 0.06\,\text{m}$| $0.05\,\text{kg}$| `right_finger_joint`| Prismatic ($-X$) | $[0.00, 0.025]\,\text{m}$ | Mimic (`multiplier=1.0`) |
-| `tcp` | Virtual Frame | Tool Center Point offset | — | `tcp_joint` | Fixed ($Z=+0.07$) | — | — |
+| `joint_1` | `base_link` $	o$ `link_1` | Revolute | $\hat{Z}$ | $[0.0, 3.142]\,	ext{rad}$ ($0^\circ 	ext{ to } 180^\circ$) | $3.0\,	ext{rad/s}$ | $200\,	ext{Nm}$ | Shoulder Pan |
+| `joint_2` | `link_1` $	o$ `link_2` | Revolute | $\hat{Z}$ (local) | $[-1.57, 1.57]\,	ext{rad}$ ($-90^\circ 	ext{ to } +90^\circ$) | $3.0\,	ext{rad/s}$ | $200\,	ext{Nm}$ | Shoulder Lift |
+| `joint_3` | `link_2` $	o$ `link_3` | Revolute | $\hat{Z}$ (local) | $[0.0, 3.142]\,	ext{rad}$ ($0^\circ 	ext{ to } 180^\circ$) | $3.0\,	ext{rad/s}$ | $200\,	ext{Nm}$ | Elbow Pitch |
+| `joint_4` | `link_3` $	o$ `link_4` | Revolute | $\hat{Z}$ (local) | $[-3.142, 0.0]\,	ext{rad}$ ($-180^\circ 	ext{ to } 0^\circ$) | $3.0\,	ext{rad/s}$ | $200\,	ext{Nm}$ | Wrist Pitch |
+| `joint_5` | `link_4` $	o$ `link_5` | Revolute | $\hat{X}$ (local) | $[0.0, 3.142]\,	ext{rad}$ ($0^\circ 	ext{ to } 180^\circ$) | $3.0\,	ext{rad/s}$ | $200\,	ext{Nm}$ | Wrist Roll |
+| `joint_6` | `link_5` $	o$ `link_6` | Prismatic | $-\hat{Z}$ (local) | $[0.00, 0.03]\,	ext{m}$ ($0 	ext{ to } 30\,	ext{mm}$) | $0.1\,	ext{m/s}$ | $100\,	ext{N}$ | Left Finger Stroke |
+| `joint_7` | `link_5` $	o$ `link_7` | Prismatic | $+\hat{Z}$ (local) | $[-0.03, 0.00]\,	ext{m}$ ($-30 	ext{ to } 0\,	ext{mm}$) | $0.1\,	ext{m/s}$ | $100\,	ext{N}$ | Right Finger Mimic (`-1`) |
+| `tcp_joint` | `link_5` $	o$ `tcp` | Fixed | — | Origin: $(0.54, 0, 0)\,	ext{m}$ | — | — | Tool Center Point |
 
 ---
 
 ## Live Kinematics Telemetry & State Machine
 
-The automated pick-and-place demo executes a 7-phase state machine with real-time Cartesian and joint telemetry:
+The automated pick-and-place pipeline executes a 7-stage state machine against Gazebo Sim and MoveIt 2, streaming live telemetry to the terminal dashboard:
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
 │ PHASE: Phase 2: APPROACH_CUBE                                        │
 ├──────────────────────────────────────────────────────────────────────┤
-│ TCP Target Position [m]: X=+0.300 | Y=+0.000 | Z=+0.520              │
-│ TCP Target Euler  [deg]: R=  +0.0° | P= +90.0° | Y=  +0.0°            │
-│ Joint Angles [deg]     : J1=  +0.0° | J2= +75.2° | J3= -94.0°      │
-│                          J4=  +0.0° | J5=+108.8° | J6=  +0.0°      │
-│ Gripper State          : [Open  ] (Stroke:  0.025 m)                 │
-│ Live TF delta error    : < 0.001 m (Kinematically Verified)          │
+│ TCP Target Position [m]: X=-0.000 | Y=-0.488 | Z=-0.043              │
+│ TCP Target Euler  [deg]: R=  -0.0° | P= -69.9° | Y= -90.0°           │
+│ Joint Angles [deg]     : J1= +90.0° | J2= +25.8° | J3= +63.0°        │
+│                          J4= -68.8° | J5= +90.0°                     │
+│ Gripper State          : [Open  ] (Stroke:  0.030 m)                 │
+│ Live TF delta error    : 0.0000 m (Pass: <0.002 m)                   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### State Machine Lifecycle
-1. **`HOME_POSE`**: Arm moves to upright ready stance ($Z=0.45\,\text{m}$), gripper opens ($0.025\,\text{m}$).
-2. **`APPROACH_CUBE`**: Approaches pre-grasp pose directly above the target object ($X=0.30\,\text{m}, Y=0.0\,\text{m}, Z=0.52\,\text{m}$).
-3. **`DESCEND_GRASP`**: Descends end-effector to object level ($Z=0.44\,\text{m}$), closes gripper around cube ($\text{stroke}=0.005\,\text{m}$).
-4. **`ELEVATE_OBJECT`**: Vertical Cartesian lift ($+0.12\,\text{m}$ to $Z=0.56\,\text{m}$) securing the object.
-5. **`TRANSFER_TO_BASKET`**: Smooth arc trajectory transfer to right place zone ($X=0.15\,\text{m}, Y=-0.28\,\text{m}, Z=0.56\,\text{m}$).
-6. **`PLACE_AND_RELEASE`**: Lowers to pedestal surface ($Z=0.44\,\text{m}$) and opens gripper fingers.
-7. **`RETRACT_HOME`**: Vertical retreat and return to safe standby stance.
+1. **`HOME_POSE`**: Arm assumes upright ready posture ($[1.57, 0.0, 1.57, -1.57, 1.57]$), gripper open ($0.030\,	ext{m}$).
+2. **`APPROACH_CUBE`**: Pre-grasp approach directly over target cube on the table ($X=-0.000\,	ext{m}, Y=-0.488\,	ext{m}, Z=-0.043\,	ext{m}$).
+3. **`DESCEND_GRASP`**: End-effector descends to table height ($Z=-0.083\,	ext{m}$) and closes gripper around object ($	ext{stroke}=0.005\,	ext{m}$).
+4. **`ELEVATE_OBJECT`**: Vertical Cartesian lift ($+0.12\,	ext{m}$ to $Z=+0.040\,	ext{m}$) securing the target cube.
+5. **`TRANSFER_TO_BASKET`**: Smooth arc trajectory transferring the object to the destination basket ($X=-0.380\,	ext{m}, Y=-0.391\,	ext{m}, Z=+0.040\,	ext{m}$).
+6. **`PLACE_AND_RELEASE`**: Lowers into basket ($Z=-0.083\,	ext{m}$) and opens gripper fingers ($0.030\,	ext{m}$).
+7. **`RETRACT_HOME`**: Vertical retreat returning to safe `HOME_POSE` posture.
 
 ---
 
@@ -113,7 +124,7 @@ source install/setup.bash
 ```
 
 ### 3. Install Global Shell Shortcuts
-Run the shortcut configuration utility to enable one-word commands from any shell:
+Run the shortcut configuration utility to enable one-word commands from any terminal:
 ```bash
 bash setup_shortcuts.sh
 source ~/.bashrc
@@ -169,5 +180,6 @@ This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) fo
 
 ## Author & Maintainer
 
-- **Atharva**
+- **Atharva Dhawale**
+- GitHub: [AtharvaDhawale](https://github.com/AtharvaDhawale)
 - Built with ROS 2 Jazzy Jalisco, Gazebo Harmonic, and MoveIt 2.

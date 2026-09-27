@@ -2,7 +2,7 @@
 <sdf version="1.8">
   <world name="pick_and_place_world">
 
-    <!-- Physics Engine Settings -->
+    <!-- Physics Engine Settings (ODE optimized for stable manipulation) -->
     <physics type="ode">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
@@ -39,7 +39,7 @@
       <grid>true</grid>
     </scene>
 
-    <!-- Sun Light Source -->
+    <!-- Sun Directional Light -->
     <light name="sun" type="directional">
       <cast_shadows>true</cast_shadows>
       <pose>0 0 10 0 0 0</pose>
@@ -96,15 +96,15 @@
       </link>
     </model>
 
-    <!-- Pedestal Table (box 0.6m x 0.6m x 0.4m at origin Z=0.2m) -->
-    <model name="pedestal_table">
+    <!-- Work Table (Center at X=0.0m, Y=-0.45m, Z=0.20m, size: 0.8m x 0.8m x 0.40m, top surface at Z=0.40m) -->
+    <model name="work_table">
       <static>true</static>
-      <pose>0 0 0.2 0 0 0</pose>
+      <pose>0.0 -0.45 0.20 0 0 0</pose>
       <link name="table_link">
         <collision name="table_collision">
           <geometry>
             <box>
-              <size>0.6 0.6 0.4</size>
+              <size>0.8 0.8 0.40</size>
             </box>
           </geometry>
           <surface>
@@ -125,31 +125,31 @@
         <visual name="table_visual">
           <geometry>
             <box>
-              <size>0.6 0.6 0.4</size>
+              <size>0.8 0.8 0.40</size>
             </box>
           </geometry>
           <material>
             <ambient>0.25 0.28 0.32 1.0</ambient>
-            <diffuse>0.3 0.35 0.4 1.0</diffuse>
+            <diffuse>0.30 0.35 0.40 1.0</diffuse>
             <specular>0.4 0.4 0.4 1.0</specular>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- Target Graspable Object (cube 0.035m, mass 0.03kg, color orange at X=0.30m, Y=0.0m, Z=0.4175m) -->
+    <!-- Target Graspable Orange Cube (0.035m x 0.035m x 0.035m, mass: 0.025kg, placed at X=0.0m, Y=-0.54m, Z=0.42m) -->
     <model name="target_cube">
-      <pose>0.30 0.0 0.4175 0 0 0</pose>
+      <pose>0.0 -0.54 0.42 0 0 0</pose>
       <link name="cube_link">
         <inertial>
-          <mass>0.03</mass>
+          <mass>0.025</mass>
           <inertia>
-            <ixx>6.125e-6</ixx>
+            <ixx>5.104e-6</ixx>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
-            <iyy>6.125e-6</iyy>
+            <iyy>5.104e-6</iyy>
             <iyz>0.0</iyz>
-            <izz>6.125e-6</izz>
+            <izz>5.104e-6</izz>
           </inertia>
         </inertial>
         <collision name="cube_collision">
@@ -161,13 +161,13 @@
           <surface>
             <friction>
               <ode>
-                <mu>1.0</mu>
-                <mu2>1.0</mu2>
+                <mu>1.2</mu>
+                <mu2>1.2</mu2>
               </ode>
             </friction>
             <contact>
               <ode>
-                <kp>100000.0</kp>
+                <kp>1000000.0</kp>
                 <kd>1.0</kd>
                 <min_depth>0.001</min_depth>
               </ode>
@@ -181,11 +181,132 @@
             </box>
           </geometry>
           <material>
-            <ambient>0.95 0.4 0.05 1.0</ambient>
-            <diffuse>0.95 0.4 0.05 1.0</diffuse>
+            <ambient>0.95 0.45 0.05 1.0</ambient>
+            <diffuse>0.95 0.45 0.05 1.0</diffuse>
             <specular>0.5 0.5 0.5 1.0</specular>
           </material>
         </visual>
+      </link>
+    </model>
+
+    <!-- Target Destination Bin / Basket (Position at X=0.36m, Y=-0.36m, Z=0.42m aligned with Phase 5 & 6) -->
+    <model name="destination_bin">
+      <static>true</static>
+      <pose>0.36 -0.36 0.41 0 0 0</pose>
+      <link name="bin_link">
+        <!-- Base Tray Plate -->
+        <collision name="bin_base_collision">
+          <geometry>
+            <box>
+              <size>0.16 0.16 0.02</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="bin_base_visual">
+          <geometry>
+            <box>
+              <size>0.16 0.16 0.02</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.15 0.45 0.85 1.0</ambient>
+            <diffuse>0.15 0.45 0.85 1.0</diffuse>
+            <specular>0.4 0.4 0.4 1.0</specular>
+          </material>
+        </visual>
+
+        <!-- Retaining Lip Walls -->
+        <visual name="wall_north_vis">
+          <pose>0 0.075 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.16 0.01 0.02</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.12 0.35 0.75 1.0</ambient>
+            <diffuse>0.12 0.35 0.75 1.0</diffuse>
+          </material>
+        </visual>
+        <collision name="wall_north_col">
+          <pose>0 0.075 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.16 0.01 0.02</size>
+            </box>
+          </geometry>
+        </collision>
+
+        <visual name="wall_south_vis">
+          <pose>0 -0.075 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.16 0.01 0.02</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.12 0.35 0.75 1.0</ambient>
+            <diffuse>0.12 0.35 0.75 1.0</diffuse>
+          </material>
+        </visual>
+        <collision name="wall_south_col">
+          <pose>0 -0.075 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.16 0.01 0.02</size>
+            </box>
+          </geometry>
+        </collision>
+
+        <visual name="wall_east_vis">
+          <pose>0.075 0 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.01 0.14 0.02</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.12 0.35 0.75 1.0</ambient>
+            <diffuse>0.12 0.35 0.75 1.0</diffuse>
+          </material>
+        </visual>
+        <collision name="wall_east_col">
+          <pose>0.075 0 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.01 0.14 0.02</size>
+            </box>
+          </geometry>
+        </collision>
+
+        <visual name="wall_west_vis">
+          <pose>-0.075 0 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.01 0.14 0.02</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.12 0.35 0.75 1.0</ambient>
+            <diffuse>0.12 0.35 0.75 1.0</diffuse>
+          </material>
+        </visual>
+        <collision name="wall_west_col">
+          <pose>-0.075 0 0.02 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.01 0.14 0.02</size>
+            </box>
+          </geometry>
+        </collision>
       </link>
     </model>
 
