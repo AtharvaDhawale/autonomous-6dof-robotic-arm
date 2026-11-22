@@ -1,25 +1,23 @@
-# Autonomous 5-DOF Robotic Arm & Parallel Clamshell Gripper Pipeline
+# Pick-and-place simulation with ROS 2
 
-[![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy%20Jalisco-3498DB?style=for-the-badge&logo=ros)](https://docs.ros.org/en/jazzy/)
-[![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-FF6F00?style=for-the-badge&logo=gazebo)](https://gazebosim.org/)
-[![MoveIt 2](https://img.shields.io/badge/MoveIt%202-Motion%20Planning-5271FF?style=for-the-badge)](https://moveit.picknik.ai/)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python)](https://python.org)
-[![C++](https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=c%2B%2B)](https://isocpp.org)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=for-the-badge)](LICENSE)
+A five-joint robotic arm and parallel gripper move through a seven-stage pick-and-place sequence in simulation. The project brings together a SolidWorks model, MoveIt 2 inverse kinematics, Gazebo Harmonic, and a Python node that commands the arm and reports its tool position.
 
-An end-to-end, modular ROS 2 robotic manipulation framework integrating a high-fidelity SolidWorks-exported 5-DOF robotic arm and parallel clamshell gripper. Features closed-form analytical kinematics, MoveIt 2 OMPL motion planning, Gazebo Sim Harmonic physics with `gz_ros2_control`, real-time TF2 coordinate telemetry, and autonomous pick-and-place task execution.
+![Terminal recording of the pick-and-place demo](media/demo.gif)
 
----
+## Explore the implementation
 
-## Demonstration
+| Question | Start here |
+| --- | --- |
+| How does the arm move from home to grasp and release? | [Python control sequence](src/custom_arm/custom_arm_kinematics/custom_arm_kinematics/pick_and_place_telemetry.py) |
+| How are the links, joints, and gripper modeled? | [URDF/Xacro model](src/custom_arm/custom_arm_description/urdf/robot.urdf.xacro) |
+| How do arm and gripper commands reach the simulator? | [Trajectory controllers](src/custom_arm/custom_arm_control/config/arm_controllers.yaml) |
+| What does the arm interact with? | [Gazebo pick-and-place world](src/custom_arm/custom_arm_gazebo/worlds/pick_and_place.world) |
 
-![Autonomous Pick and Place Telemetry](media/demo.gif)
-
----
+The telemetry node requests joint angles from MoveIt 2 and uses predefined joint targets if the service is unavailable. It also publishes a tool transform calculated from commanded angles. The displayed position error is useful for inspecting the sequence. Physical positioning accuracy would require an independent measurement.
 
 ## System Architecture
 
-The workspace is organized into five decoupled, production-grade ROS 2 packages adhering to the standard ROS 2 robotics stack layout:
+The workspace is organized into five ROS 2 packages:
 
 ```text
 robotic_arm_ws/
@@ -45,7 +43,7 @@ robotic_arm_ws/
 | **`custom_arm_moveit_config`**| `ament_cmake` | Semantic description (`robot.srdf`), KDL kinematics plugin, OMPL planners (`RRTConnect`, `RRTstar`, `PRM`), Pilz Cartesian limits, and MoveIt execution controllers. |
 | **`custom_arm_control`**      | `ament_cmake` | `controller_manager` configuration (100 Hz), `JointStateBroadcaster`, and `JointTrajectoryController` for the 5-DOF arm and parallel gripper. |
 | **`custom_arm_gazebo`**       | `ament_cmake` | SDF 1.8 physics environment (`pick_and_place.world`), ODE solver settings, calibrated work table, target graspable orange cube, destination basket, and `ros_gz_bridge`. |
-| **`custom_arm_kinematics`**   | `ament_python` | Analytical geometric IK solver, `/compute_ik` service client, MoveGroup action client, TF2 coordinate validator, and 7-stage automated pick-and-place state machine. |
+| **`custom_arm_kinematics`**   | `ament_python` | Forward kinematics, `/compute_ik` service client, MoveGroup action client, TF2 coordinate validator, and 7-stage automated pick-and-place state machine. |
 
 ---
 
@@ -117,8 +115,10 @@ sudo apt install -y ros-jazzy-desktop ros-jazzy-ros-gz ros-jazzy-gz-ros2-control
 
 ### 2. Build Workspace
 ```bash
+git clone https://github.com/AtharvaDhawale/autonomous-6dof-robotic-arm.git ~/robotic_arm_ws
 cd ~/robotic_arm_ws
 source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -176,7 +176,7 @@ The script captures the X11 display at 30 FPS and executes a two-pass palette op
 
 ## License
 
-This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) for details.
+This project is licensed under the Apache 2.0 License. The ROS package manifests declare the license.
 
 ## Author & Maintainer
 
